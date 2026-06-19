@@ -77,6 +77,12 @@ export interface Conversation {
   currentNote?: string;
   /** Session-specific external context paths (directories with full access). Resets on new session. */
   externalContextPaths?: string[];
+  /**
+   * Vault-relative POSIX path (no leading slash) that scopes Claude's working
+   * directory (cwd) for this conversation. Empty/undefined = whole vault root.
+   * Changing it resets the provider session so the new cwd takes effect.
+   */
+  workingFolder?: string;
   /** Context window usage information. */
   usage?: UsageInfo;
   /** Status of AI title generation. */
@@ -120,6 +126,8 @@ export interface SessionMetadata {
   providerState?: Record<string, unknown>;
   currentNote?: string;
   externalContextPaths?: string[];
+  /** Vault-relative POSIX path scoping Claude's working directory. Empty = vault root. */
+  workingFolder?: string;
   enabledMcpServers?: string[];
   usage?: UsageInfo;
   /** Assistant checkpoint identifier for resumeAtMessageId after rewind. */

@@ -117,6 +117,7 @@ export class SessionStorage {
       providerState: providerState && Object.keys(providerState).length > 0 ? providerState : undefined,
       currentNote: conversation.currentNote,
       externalContextPaths: conversation.externalContextPaths,
+      workingFolder: conversation.workingFolder,
       enabledMcpServers: conversation.enabledMcpServers,
       usage: conversation.usage,
       resumeAtMessageId: conversation.resumeAtMessageId,

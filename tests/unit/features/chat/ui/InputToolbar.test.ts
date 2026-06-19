@@ -1,4 +1,5 @@
 import { createMockEl } from '@test/helpers/mockElement';
+import type { App } from 'obsidian';
 
 import type { UsageInfo } from '@/core/types';
 import {
@@ -19,7 +20,15 @@ import {
 jest.mock('obsidian', () => ({
   Notice: jest.fn(),
   setIcon: jest.fn(),
+  FuzzySuggestModal: class {},
+  TFolder: class {},
 }));
+
+const mockApp = {
+  vault: {
+    getAllLoadedFiles: () => [],
+  },
+} as unknown as App;
 
 function makeUsage(overrides: Partial<UsageInfo> = {}): UsageInfo {
   return {
@@ -1113,7 +1122,7 @@ describe('createInputToolbar', () => {
   it('should return all toolbar components', () => {
     const parentEl = createMockEl();
     const callbacks = createMockCallbacks();
-    const toolbar = createInputToolbar(parentEl, callbacks);
+    const toolbar = createInputToolbar(parentEl, callbacks, mockApp);
 
     expect(toolbar.modelSelector).toBeInstanceOf(ModelSelector);
     expect(toolbar.modeSelector).toBeInstanceOf(ModeSelector);
@@ -1128,7 +1137,7 @@ describe('createInputToolbar', () => {
     const parentEl = createMockEl();
     const callbacks = createMockCallbacks();
 
-    createInputToolbar(parentEl, callbacks);
+    createInputToolbar(parentEl, callbacks, mockApp);
 
     const permissionIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-permission-toggle'));
     const modeIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-mode-selector'));

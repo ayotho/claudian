@@ -4,7 +4,7 @@ import { query as agentQuery } from '@anthropic-ai/claude-agent-sdk';
 import { ProviderSettingsCoordinator } from '../../../core/providers/ProviderSettingsCoordinator';
 import type ClaudianPlugin from '../../../main';
 import { getEnhancedPath, getMissingNodeError, parseEnvironmentVariables } from '../../../utils/env';
-import { getVaultPath } from '../../../utils/path';
+import { getVaultPath, resolveWorkingDirectory } from '../../../utils/path';
 import { extractAssistantText } from '../auxiliary/extractAssistantText';
 import { toClaudeRuntimeModelId } from '../modelSelection';
 import {
@@ -33,6 +33,8 @@ export interface ColdStartQueryConfig {
   /** Default: SDK default (true). */
   persistSession?: boolean;
   resumeSessionId?: string;
+  /** Vault-relative working folder scoping cwd. Empty/undefined = vault root. */
+  workingFolder?: string;
   abortController?: AbortController;
   /** Pre-fetched provider settings snapshot. Avoids a redundant fetch when the caller already has one. */
   providerSettings?: Record<string, unknown>;
@@ -78,8 +80,10 @@ export async function runColdStartQuery(
 
   const selectedModel = toClaudeRuntimeModelId(config.model ?? (settings.model as string));
 
+  const workingDirectory = resolveWorkingDirectory(vaultPath, config.workingFolder);
+
   const options: Options = {
-    cwd: vaultPath,
+    cwd: workingDirectory,
     systemPrompt: config.systemPrompt,
     model: selectedModel,
     abortController: config.abortController,

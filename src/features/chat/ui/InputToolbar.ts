@@ -1,4 +1,5 @@
-import { Notice, setIcon } from 'obsidian';
+import type { App } from 'obsidian';
+import { FuzzySuggestModal, Notice, setIcon, TFolder } from 'obsidian';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -878,6 +879,122 @@ export class ExternalContextSelector {
   }
 }
 
+/** Sentinel option used to clear the working folder back to the vault root. */
+const WORKING_FOLDER_ROOT = ' __vault_root__';
+
+/** Fuzzy folder picker over all vault folders, plus a "vault root" reset entry. */
+class FolderSuggestModal extends FuzzySuggestModal<string> {
+  constructor(
+    app: App,
+    private onChoose: (folderPath: string | null) => void,
+  ) {
+    super(app);
+    this.setPlaceholder('Select a working folder…');
+  }
+
+  getItems(): string[] {
+    const folders = this.app.vault.getAllLoadedFiles()
+      .filter((file): file is TFolder => file instanceof TFolder)
+      .map((folder) => folder.path)
+      .filter((folderPath) => folderPath && folderPath !== '/')
+      .sort((a, b) => a.localeCompare(b));
+    return [WORKING_FOLDER_ROOT, ...folders];
+  }
+
+  getItemText(item: string): string {
+    return item === WORKING_FOLDER_ROOT ? '↩ Vault root (clear)' : item;
+  }
+
+  onChooseItem(item: string): void {
+    this.onChoose(item === WORKING_FOLDER_ROOT ? null : item);
+  }
+}
+
+/**
+ * Per-conversation working-folder control. Shows "Vault root" when unset, or the
+ * folder name (with a full-path tooltip) when scoped. Clicking opens a fuzzy
+ * folder picker over the vault.
+ */
+export class WorkingFolderSelector {
+  private container: HTMLElement;
+  private iconEl: HTMLElement | null = null;
+  private labelEl: HTMLElement | null = null;
+  private app: App;
+  private workingFolder: string | null = null;
+  private onChangeCallback: ((workingFolder: string | null) => void) | null = null;
+
+  constructor(parentEl: HTMLElement, app: App) {
+    this.app = app;
+    this.container = parentEl.createDiv({ cls: 'claudian-working-folder-selector' });
+    this.render();
+  }
+
+  setOnChange(callback: (workingFolder: string | null) => void): void {
+    this.onChangeCallback = callback;
+  }
+
+  getWorkingFolder(): string | null {
+    return this.workingFolder;
+  }
+
+  /** Restore the current value without firing the change callback. */
+  setWorkingFolder(workingFolder: string | null | undefined): void {
+    this.workingFolder = workingFolder || null;
+    this.updateDisplay();
+  }
+
+  private render() {
+    this.container.empty();
+
+    const button = this.container.createDiv({ cls: 'claudian-working-folder-button' });
+    this.iconEl = button.createDiv({ cls: 'claudian-working-folder-icon' });
+    setIcon(this.iconEl, 'folder-open');
+    this.labelEl = button.createSpan({ cls: 'claudian-working-folder-label' });
+
+    this.updateDisplay();
+
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.openPicker();
+    });
+  }
+
+  private openPicker() {
+    new FolderSuggestModal(this.app, (folderPath) => {
+      this.select(folderPath);
+    }).open();
+  }
+
+  private select(folderPath: string | null) {
+    const normalized = folderPath || null;
+    if (normalized === this.workingFolder) {
+      return;
+    }
+    this.workingFolder = normalized;
+    this.updateDisplay();
+    this.onChangeCallback?.(normalized);
+  }
+
+  private folderName(folderPath: string): string {
+    const parts = folderPath.split('/');
+    return parts[parts.length - 1] || folderPath;
+  }
+
+  updateDisplay() {
+    if (!this.iconEl || !this.labelEl) return;
+
+    if (this.workingFolder) {
+      this.container.addClass('active');
+      this.labelEl.setText(this.folderName(this.workingFolder));
+      this.container.setAttribute('title', `Working folder: ${this.workingFolder} (click to change)`);
+    } else {
+      this.container.removeClass('active');
+      this.labelEl.setText('Vault root');
+      this.container.setAttribute('title', 'Working folder: vault root (click to scope to a subfolder)');
+    }
+  }
+}
+
 export class McpServerSelector {
   private container: HTMLElement;
   private iconEl: HTMLElement | null = null;
@@ -1211,13 +1328,15 @@ export class ContextUsageMeter {
 
 export function createInputToolbar(
   parentEl: HTMLElement,
-  callbacks: ToolbarCallbacks
+  callbacks: ToolbarCallbacks,
+  app: App,
 ): {
   modelSelector: ModelSelector;
   modeSelector: ModeSelector;
   thinkingBudgetSelector: ThinkingBudgetSelector;
   contextUsageMeter: ContextUsageMeter | null;
   externalContextSelector: ExternalContextSelector;
+  workingFolderSelector: WorkingFolderSelector;
   mcpServerSelector: McpServerSelector;
   permissionToggle: PermissionToggle;
   serviceTierToggle: ServiceTierToggle;
@@ -1227,6 +1346,7 @@ export function createInputToolbar(
   const serviceTierToggle = new ServiceTierToggle(parentEl, callbacks);
   const contextUsageMeter = new ContextUsageMeter(parentEl);
   const externalContextSelector = new ExternalContextSelector(parentEl, callbacks);
+  const workingFolderSelector = new WorkingFolderSelector(parentEl, app);
   const mcpServerSelector = new McpServerSelector(parentEl);
   const permissionToggle = new PermissionToggle(parentEl, callbacks);
   const modeSelector = new ModeSelector(parentEl, callbacks);
@@ -1238,6 +1358,7 @@ export function createInputToolbar(
     serviceTierToggle,
     contextUsageMeter,
     externalContextSelector,
+    workingFolderSelector,
     mcpServerSelector,
     permissionToggle,
   };

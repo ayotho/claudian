@@ -73,6 +73,7 @@ function createMockPersistentQueryConfig(
     mcpServersKey: '',
     pluginsKey: '',
     externalContextPaths: [],
+    workingDirectory: '/test/vault',
     settingSources: 'project,local',
     claudeCliPath: '/mock/claude',
     enableChrome: false,
@@ -85,6 +86,7 @@ function createMockPersistentQueryConfig(
 function createMockContext(overrides: Partial<QueryOptionsContext> = {}): QueryOptionsContext {
   return {
     vaultPath: '/test/vault',
+    workingDirectory: '/test/vault',
     cliPath: '/mock/claude',
     settings: createMockSettings(),
     customEnv: {},

@@ -59,7 +59,7 @@ import type { ClaudianSettings, PermissionMode } from '../../../core/types/setti
 import type ClaudianPlugin from '../../../main';
 import { stripCurrentNoteContext } from '../../../utils/context';
 import { getEnhancedPath, getMissingNodeError, parseEnvironmentVariables } from '../../../utils/env';
-import { getVaultPath } from '../../../utils/path';
+import { getVaultPath, resolveWorkingDirectory } from '../../../utils/path';
 import {
   buildContextFromHistory,
   buildPromptWithHistoryContext,
@@ -142,6 +142,8 @@ export class ClaudianService implements ChatRuntime {
   private permissionModeSyncCallback: ((sdkMode: string) => void) | null = null;
   private vaultPath: string | null = null;
   private currentExternalContextPaths: string[] = [];
+  /** Vault-relative working folder for the active conversation (empty = vault root). */
+  private currentWorkingFolder: string | undefined = undefined;
   private readyStateListeners = new Set<(ready: boolean) => void>();
 
   // Modular components
@@ -318,6 +320,8 @@ export class ClaudianService implements ChatRuntime {
     conversation: ChatRuntimeConversationState | null,
     externalContextPaths?: string[],
   ): void {
+    this.applyWorkingFolder(conversation?.workingFolder);
+
     if (!conversation) {
       this.pendingForkSession = false;
       this.pendingResumeAt = undefined;
@@ -327,6 +331,20 @@ export class ClaudianService implements ChatRuntime {
 
     const resolvedSessionId = this.applyForkState(conversation);
     this.setSessionId(resolvedSessionId, externalContextPaths);
+  }
+
+  /**
+   * Tracks the active conversation's working folder. When it changes, the
+   * persistent query is closed so the next turn restarts with the new cwd
+   * (cwd can't be updated dynamically). Default (empty) keeps the vault root.
+   */
+  private applyWorkingFolder(workingFolder: string | undefined): void {
+    const normalized = workingFolder || undefined;
+    if (normalized === this.currentWorkingFolder) {
+      return;
+    }
+    this.currentWorkingFolder = normalized;
+    this.closePersistentQuery('working folder change');
   }
 
   buildSessionUpdates({ conversation, sessionInvalidated }: {
@@ -645,6 +663,7 @@ export class ClaudianService implements ChatRuntime {
 
     return {
       vaultPath,
+      workingDirectory: resolveWorkingDirectory(vaultPath, this.currentWorkingFolder),
       cliPath,
       settings: this.getScopedSettings(),
       customEnv,

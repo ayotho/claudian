@@ -321,6 +321,35 @@ export function isPathWithinVault(candidatePath: string, vaultPath: string): boo
   return isPathWithinDirectory(candidatePath, vaultPath, vaultPath);
 }
 
+/**
+ * Resolves the working directory (cwd) for a conversation.
+ *
+ * Returns the absolute path of `workingFolder` joined onto `vaultPath` when it
+ * is a non-empty vault-relative path that stays within the vault. Otherwise (or
+ * on any escape attempt) returns `vaultPath` unchanged, so the default behaviour
+ * is always the vault root.
+ */
+export function resolveWorkingDirectory(
+  vaultPath: string,
+  workingFolder?: string | null,
+): string {
+  if (typeof workingFolder !== 'string') {
+    return vaultPath;
+  }
+
+  const trimmed = workingFolder.trim().replace(/^[/\\]+/, '');
+  if (!trimmed) {
+    return vaultPath;
+  }
+
+  const candidate = path.resolve(vaultPath, trimmed);
+  if (!isPathWithinVault(candidate, vaultPath)) {
+    return vaultPath;
+  }
+
+  return candidate;
+}
+
 export function normalizePathForVault(
   rawPath: string | undefined | null,
   vaultPath: string | null | undefined

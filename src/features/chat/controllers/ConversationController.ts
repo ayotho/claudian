@@ -15,7 +15,7 @@ import type { SubagentManager } from '../services/SubagentManager';
 import type { ChatState } from '../state/ChatState';
 import type { FileContextManager } from '../ui/FileContext';
 import type { ImageContextManager } from '../ui/ImageContext';
-import type { ExternalContextSelector, McpServerSelector } from '../ui/InputToolbar';
+import type { ExternalContextSelector, McpServerSelector, WorkingFolderSelector } from '../ui/InputToolbar';
 import type { StatusPanel } from '../ui/StatusPanel';
 
 function runConversationAction(action: () => Promise<void>, failureMessage: string): void {
@@ -44,6 +44,7 @@ export interface ConversationControllerDeps {
   getImageContextManager: () => ImageContextManager | null;
   getMcpServerSelector: () => McpServerSelector | null;
   getExternalContextSelector: () => ExternalContextSelector | null;
+  getWorkingFolderSelector?: () => WorkingFolderSelector | null;
   clearQueuedMessage: () => void;
   getTitleGenerationService: () => TitleGenerationService | null;
   getStatusPanel: () => StatusPanel | null;
@@ -174,6 +175,7 @@ export class ConversationController {
       this.deps.getExternalContextSelector()?.clearExternalContexts(
         plugin.settings.persistentExternalContextPaths || []
       );
+      this.deps.getWorkingFolderSelector?.()?.setWorkingFolder(null);
       this.deps.clearQueuedMessage();
 
       this.callbacks.onNewConversation?.();
@@ -220,6 +222,7 @@ export class ConversationController {
       this.deps.getExternalContextSelector()?.clearExternalContexts(
         plugin.settings.persistentExternalContextPaths || []
       );
+      this.deps.getWorkingFolderSelector?.()?.setWorkingFolder(null);
 
       this.deps.getMcpServerSelector()?.clearEnabled();
 
@@ -417,6 +420,7 @@ export class ConversationController {
     const currentNote = fileCtx?.getCurrentNotePath() || undefined;
     const externalContextSelector = this.deps.getExternalContextSelector();
     const externalContextPaths = externalContextSelector?.getExternalContexts() ?? [];
+    const workingFolder = this.deps.getWorkingFolderSelector?.()?.getWorkingFolder() ?? null;
     const mcpServerSelector = this.deps.getMcpServerSelector();
     const enabledMcpServers = mcpServerSelector ? Array.from(mcpServerSelector.getEnabledServers()) : [];
 
@@ -431,6 +435,7 @@ export class ConversationController {
       messages: state.messages,
       currentNote: currentNote,
       externalContextPaths: externalContextPaths.length > 0 ? externalContextPaths : undefined,
+      workingFolder: workingFolder ?? undefined,
       usage: state.usage ?? undefined,
       enabledMcpServers: enabledMcpServers.length > 0 ? enabledMcpServers : undefined,
     };
@@ -486,6 +491,8 @@ export class ConversationController {
     }
 
     this.restoreExternalContextPaths(conversation.externalContextPaths, !hasMessages);
+
+    this.deps.getWorkingFolderSelector?.()?.setWorkingFolder(conversation.workingFolder);
 
     const mcpServerSelector = this.deps.getMcpServerSelector();
     if (conversation.enabledMcpServers && conversation.enabledMcpServers.length > 0) {

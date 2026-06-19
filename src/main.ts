@@ -330,6 +330,7 @@ export default class ClaudianPlugin extends Plugin {
         messages: [],
         currentNote: meta.currentNote,
         externalContextPaths: meta.externalContextPaths,
+        workingFolder: meta.workingFolder,
         enabledMcpServers: meta.enabledMcpServers,
         usage: meta.usage,
         titleGenerationStatus: meta.titleGenerationStatus,

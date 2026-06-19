@@ -27,6 +27,7 @@
 @import "./toolbar/permission-toggle.css";
 @import "./toolbar/service-tier-toggle.css";
 @import "./toolbar/external-context.css";
+@import "./toolbar/working-folder.css";
 @import "./toolbar/mcp-selector.css";
 
 /* Features */

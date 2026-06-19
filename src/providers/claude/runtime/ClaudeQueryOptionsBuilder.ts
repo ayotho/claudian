@@ -30,6 +30,12 @@ import {
 
 export interface QueryOptionsContext {
   vaultPath: string;
+  /**
+   * Absolute working directory (cwd) for the SDK query. Defaults to `vaultPath`
+   * when the conversation has no scoped working folder. `vaultPath` itself stays
+   * the real vault root (system prompt, media folder, link normalization).
+   */
+  workingDirectory: string;
   cliPath: string;
   settings: ClaudianSettings;
   customEnv: Record<string, string>;
@@ -76,6 +82,9 @@ export class QueryOptionsBuilder {
     if (currentConfig.pluginsKey !== newConfig.pluginsKey) return true;
     if (currentConfig.settingSources !== newConfig.settingSources) return true;
     if (currentConfig.claudeCliPath !== newConfig.claudeCliPath) return true;
+
+    // Working directory (cwd) can't be updated dynamically — needs a restart.
+    if (currentConfig.workingDirectory !== newConfig.workingDirectory) return true;
 
     // Note: Permission mode is handled dynamically via setPermissionMode() in ClaudianService.
     // Since allowDangerouslySkipPermissions is always true, both directions work without restart.
@@ -124,6 +133,7 @@ export class QueryOptionsBuilder {
       mcpServersKey: '', // Dynamic via setMcpServers, not tracked for restart
       pluginsKey,
       externalContextPaths: externalContextPaths || [],
+      workingDirectory: ctx.workingDirectory,
       settingSources: settingSources.join(','),
       claudeCliPath: ctx.cliPath,
       enableChrome: claudeSettings.enableChrome,
@@ -274,7 +284,7 @@ export class QueryOptionsBuilder {
       userName: ctx.settings.userName,
     };
     const options: Options = {
-      cwd: ctx.vaultPath,
+      cwd: ctx.workingDirectory ?? ctx.vaultPath,
       systemPrompt: buildSystemPrompt(systemPromptSettings),
       model,
       abortController,

@@ -105,6 +105,8 @@ export interface PersistentQueryConfig {
   mcpServersKey: string;
   pluginsKey: string;
   externalContextPaths: string[];
+  /** Absolute cwd for the query. Defaults to the vault root. */
+  workingDirectory: string;
   settingSources: string;
   claudeCliPath: string;
   enableChrome: boolean;

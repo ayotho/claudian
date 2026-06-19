@@ -509,6 +509,7 @@ export function createTab(options: TabCreateOptions): TabData {
       modeSelector: null,
       thinkingBudgetSelector: null,
       externalContextSelector: null,
+      workingFolderSelector: null,
       mcpServerSelector: null,
       permissionToggle: null,
       serviceTierToggle: null,
@@ -943,13 +944,14 @@ function initializeInputToolbar(
         mode === 'plan' && getTabCapabilities(tab, plugin).supportsPlanMode,
       );
     },
-  });
+  }, plugin.app);
 
   tab.ui.modelSelector = toolbarComponents.modelSelector;
   tab.ui.modeSelector = toolbarComponents.modeSelector;
   tab.ui.thinkingBudgetSelector = toolbarComponents.thinkingBudgetSelector;
   tab.ui.contextUsageMeter = toolbarComponents.contextUsageMeter;
   tab.ui.externalContextSelector = toolbarComponents.externalContextSelector;
+  tab.ui.workingFolderSelector = toolbarComponents.workingFolderSelector;
   tab.ui.mcpServerSelector = toolbarComponents.mcpServerSelector;
   tab.ui.permissionToggle = toolbarComponents.permissionToggle;
   tab.ui.serviceTierToggle = toolbarComponents.serviceTierToggle;
@@ -975,6 +977,41 @@ function initializeInputToolbar(
   tab.ui.externalContextSelector.setOnPersistenceChange((paths) => {
     plugin.settings.persistentExternalContextPaths = paths;
     void plugin.saveSettings();
+  });
+
+  // Wire working-folder changes: persist on the conversation (when bound) and
+  // re-sync the runtime so the new cwd takes effect on the next turn. For blank
+  // tabs the value is held on the selector and written when the conversation is
+  // first saved.
+  tab.ui.workingFolderSelector.setOnChange((workingFolder) => {
+    void (async (): Promise<void> => {
+      const conversationId = tab.conversationId;
+
+      if (conversationId) {
+        await plugin.updateConversation(conversationId, {
+          workingFolder: workingFolder ?? undefined,
+        });
+        const conversation = plugin.getConversationSync(conversationId);
+        if (tab.service && conversation) {
+          const hasMessages = conversation.messages.length > 0;
+          const externalContextPaths = hasMessages
+            ? conversation.externalContextPaths || []
+            : (plugin.settings.persistentExternalContextPaths || []);
+          tab.service.syncConversationState(conversation, externalContextPaths);
+        }
+        return;
+      }
+
+      // Blank tab (no conversation yet): push the folder to an already-warmed
+      // runtime so the very first turn uses the right cwd. The value is also
+      // written onto the conversation when it is first saved.
+      if (tab.service) {
+        tab.service.syncConversationState(
+          { sessionId: null, workingFolder: workingFolder ?? undefined },
+          plugin.settings.persistentExternalContextPaths || [],
+        );
+      }
+    })();
   });
 
   refreshTabProviderUI(tab, plugin);
@@ -1331,6 +1368,7 @@ export function initializeTabControllers(
       getImageContextManager: () => ui.imageContextManager,
       getMcpServerSelector: () => ui.mcpServerSelector,
       getExternalContextSelector: () => ui.externalContextSelector,
+      getWorkingFolderSelector: () => ui.workingFolderSelector,
       clearQueuedMessage: () => tab.controllers.inputController?.clearQueuedMessage(),
       getTitleGenerationService: () => services.titleGenerationService,
       getStatusPanel: () => ui.statusPanel,

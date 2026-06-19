@@ -25,6 +25,7 @@ import type {
   PermissionToggle,
   ServiceTierToggle,
   ThinkingBudgetSelector,
+  WorkingFolderSelector,
 } from '../ui/InputToolbar';
 import type { InstructionModeManager } from '../ui/InstructionModeManager';
 import type { NavigationSidebar } from '../ui/NavigationSidebar';
@@ -120,6 +121,7 @@ export interface TabUIComponents {
   modeSelector: ModeSelector | null;
   thinkingBudgetSelector: ThinkingBudgetSelector | null;
   externalContextSelector: ExternalContextSelector | null;
+  workingFolderSelector: WorkingFolderSelector | null;
   mcpServerSelector: McpServerSelector | null;
   permissionToggle: PermissionToggle | null;
   serviceTierToggle: ServiceTierToggle | null;

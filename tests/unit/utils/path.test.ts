@@ -16,6 +16,7 @@ import {
   normalizePathForFilesystem,
   normalizePathForVault,
   parsePathEntries,
+  resolveWorkingDirectory,
   translateMsysPath,
 } from '@/utils/path';
 
@@ -340,6 +341,39 @@ describe('isPathWithinVault', () => {
 
   it('handles relative paths resolved against vault', () => {
     expect(isPathWithinVault('notes/file.md', vaultPath)).toBe(true);
+  });
+});
+
+describe('resolveWorkingDirectory', () => {
+  const vaultPath = path.resolve('/tmp/test-vault');
+
+  it('returns vault root when working folder is undefined', () => {
+    expect(resolveWorkingDirectory(vaultPath, undefined)).toBe(vaultPath);
+  });
+
+  it('returns vault root when working folder is null', () => {
+    expect(resolveWorkingDirectory(vaultPath, null)).toBe(vaultPath);
+  });
+
+  it('returns vault root for empty / whitespace-only folder', () => {
+    expect(resolveWorkingDirectory(vaultPath, '')).toBe(vaultPath);
+    expect(resolveWorkingDirectory(vaultPath, '   ')).toBe(vaultPath);
+  });
+
+  it('joins a vault-relative folder onto the vault root', () => {
+    expect(resolveWorkingDirectory(vaultPath, 'Clients/Adam')).toBe(
+      path.join(vaultPath, 'Clients', 'Adam'),
+    );
+  });
+
+  it('strips leading slashes before joining', () => {
+    expect(resolveWorkingDirectory(vaultPath, '/Clients/Adam')).toBe(
+      path.join(vaultPath, 'Clients', 'Adam'),
+    );
+  });
+
+  it('returns vault root when the folder escapes the vault', () => {
+    expect(resolveWorkingDirectory(vaultPath, '../outside')).toBe(vaultPath);
   });
 });
 
