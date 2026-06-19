@@ -9,6 +9,13 @@ import { ExternalContextSelector } from '@/features/chat/ui/InputToolbar';
 jest.mock('obsidian', () => ({
   Notice: jest.fn(),
   setIcon: jest.fn(),
+  TFolder: class {},
+  FuzzySuggestModal: class {
+    app: unknown;
+    constructor(app?: unknown) { this.app = app; }
+    setPlaceholder(): void {}
+    open(): void {}
+  },
 }));
 
 // Mock fs

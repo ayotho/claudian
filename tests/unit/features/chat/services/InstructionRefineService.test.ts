@@ -7,6 +7,14 @@ import {
   setMockMessages,
 } from '@test/__mocks__/claude-agent-sdk';
 
+// The resume guard only resumes a session that exists on disk under the
+// working dir. These tests don't create real SDK session files, so treat the
+// session as present to exercise the resume path.
+jest.mock('@/providers/claude/history/ClaudeHistoryStore', () => ({
+  ...jest.requireActual('@/providers/claude/history/ClaudeHistoryStore'),
+  sdkSessionExists: jest.fn().mockReturnValue(true),
+}));
+
 // Import after mocks are set up
 import { InstructionRefineService } from '@/providers/claude/auxiliary/ClaudeInstructionRefineService';
 

@@ -6,6 +6,7 @@ import type ClaudianPlugin from '../../../main';
 import { getEnhancedPath, getMissingNodeError, parseEnvironmentVariables } from '../../../utils/env';
 import { getVaultPath, resolveWorkingDirectory } from '../../../utils/path';
 import { extractAssistantText } from '../auxiliary/extractAssistantText';
+import { sdkSessionExists } from '../history/ClaudeHistoryStore';
 import { toClaudeRuntimeModelId } from '../modelSelection';
 import {
   getClaudeProviderSettings,
@@ -111,7 +112,11 @@ export async function runColdStartQuery(
     options.persistSession = false;
   }
 
-  if (config.resumeSessionId) {
+  // Only resume if the session exists under this working directory. The SDK
+  // keys session storage by cwd, so a session from a different working folder
+  // is not resumable here — resuming it would throw "No conversation found
+  // with session ID". Fall through to a fresh session when it's missing.
+  if (config.resumeSessionId && sdkSessionExists(workingDirectory, config.resumeSessionId)) {
     options.resume = config.resumeSessionId;
   }
 

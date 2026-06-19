@@ -432,3 +432,21 @@ export class TFolder {
     this.name = path.split('/').pop() || '';
   }
 }
+
+export class FuzzySuggestModal<T> {
+  app: any;
+  inputEl: any = { value: '' };
+  scope: any = { register: () => {} };
+
+  constructor(app?: any) {
+    this.app = app;
+  }
+
+  setPlaceholder(_text: string): void {}
+  setInstructions(_instructions: unknown): void {}
+  open(): void {}
+  close(): void {}
+  getItems(): T[] { return []; }
+  getItemText(_item: T): string { return ''; }
+  onChooseItem(_item: T, _evt?: unknown): void {}
+}

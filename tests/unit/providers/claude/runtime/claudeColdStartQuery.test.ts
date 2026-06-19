@@ -13,6 +13,12 @@ const sdkMock = sdkModule as unknown as {
 
 jest.mock('@/utils/path', () => ({
   getVaultPath: jest.fn().mockReturnValue('/test/vault'),
+  resolveWorkingDirectory: jest.fn((vaultPath: string, workingFolder?: string | null) =>
+    workingFolder ? `${vaultPath}/${workingFolder}` : vaultPath),
+}));
+
+jest.mock('@/providers/claude/history/ClaudeHistoryStore', () => ({
+  sdkSessionExists: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('@/utils/env', () => ({
@@ -202,6 +208,23 @@ describe('runColdStartQuery', () => {
 
       const opts = sdkMock.getLastOptions();
       expect(opts?.resume).toBe('old-sess');
+    });
+
+    it('does not resume when the session is missing under the working dir', async () => {
+      // Session storage is keyed by cwd; a session from a different working
+      // folder is not resumable here. Guard must drop resume, not crash.
+      const { sdkSessionExists } = jest.requireMock(
+        '@/providers/claude/history/ClaudeHistoryStore',
+      );
+      (sdkSessionExists as jest.Mock).mockReturnValueOnce(false);
+      sdkMock.setMockMessages([]);
+
+      await runColdStartQuery(
+        createConfig({ resumeSessionId: 'orphaned-sess' }),
+        'hi',
+      );
+
+      expect(sdkMock.getLastOptions()?.resume).toBeUndefined();
     });
 
     it('does not set thinking when disabled', async () => {

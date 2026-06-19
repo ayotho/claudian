@@ -286,6 +286,11 @@ jest.mock('@/features/chat/ui/InputToolbar', () => ({
       mcpServerSelector: mockMcpServerSelector,
       permissionToggle: mockPermissionToggle,
       serviceTierToggle: mockServiceTierToggle,
+      workingFolderSelector: {
+        setOnChange: jest.fn(),
+        getWorkingFolder: jest.fn().mockReturnValue(null),
+        setWorkingFolder: jest.fn(),
+      },
     };
   }),
 }));

@@ -8,6 +8,7 @@ import type {
   SubagentInfo,
   ToolCallInfo,
 } from '../../../core/types';
+import { resolveWorkingDirectory } from '../../../utils/path';
 import { type ClaudeProviderState, getClaudeState } from '../types/providerState';
 import {
   deleteSDKSession,
@@ -362,6 +363,11 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
       return;
     }
 
+    // Session history is stored per working directory (the SDK keys project
+    // dirs by cwd). A conversation scoped to a subfolder has its sessions under
+    // that subfolder, so resolve the same effective dir used for the query cwd.
+    const sessionDir = resolveWorkingDirectory(vaultPath, conversation.workingFolder);
+
     const state = getClaudeState(conversation.providerState);
     const isPendingFork = this.isPendingForkConversation(conversation);
     const allSessionIds: string[] = isPendingFork
@@ -385,7 +391,7 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
       : (state.providerSessionId ?? conversation.sessionId);
 
     for (const sessionId of allSessionIds) {
-      if (!sdkSessionExists(vaultPath, sessionId)) {
+      if (!sdkSessionExists(sessionDir, sessionId)) {
         missingSessionCount++;
         continue;
       }
@@ -394,7 +400,7 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
       const truncateAt = isCurrentSession
         ? (isPendingFork ? state.forkSource!.resumeAt : conversation.resumeAtMessageId)
         : undefined;
-      const result = await loadSDKSessionMessages(vaultPath, sessionId, truncateAt);
+      const result = await loadSDKSessionMessages(sessionDir, sessionId, truncateAt);
 
       if (result.error) {
         errorCount++;
@@ -421,7 +427,7 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
     if (state.subagentData) {
       await enrichAsyncSubagentToolCalls(
         state.subagentData,
-        vaultPath,
+        sessionDir,
         allSessionIds,
       );
       applySubagentData(merged, state.subagentData);
@@ -441,6 +447,7 @@ export class ClaudeConversationHistoryService implements ProviderConversationHis
       return;
     }
 
-    await deleteSDKSession(vaultPath, sessionId);
+    const sessionDir = resolveWorkingDirectory(vaultPath, conversation.workingFolder);
+    await deleteSDKSession(sessionDir, sessionId);
   }
 }

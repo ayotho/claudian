@@ -378,7 +378,9 @@ export function getHostnameKey(): string {
   }
 
   const storage = getDeviceSettingsStorage();
-  const stored = storage?.getItem(DEVICE_SETTINGS_STORAGE_KEY)?.trim();
+  const stored = typeof storage?.getItem === 'function'
+    ? storage.getItem(DEVICE_SETTINGS_STORAGE_KEY)?.trim()
+    : undefined;
   if (stored) {
     cachedDeviceSettingsKey = stored;
     return cachedDeviceSettingsKey;

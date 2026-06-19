@@ -67,7 +67,7 @@ import {
   isSessionExpiredError,
 } from '../../../utils/session';
 import { CLAUDE_PROVIDER_CAPABILITIES } from '../capabilities';
-import { loadSubagentFinalResult, loadSubagentToolCalls } from '../history/ClaudeHistoryStore';
+import { loadSubagentFinalResult, loadSubagentToolCalls, sdkSessionExists } from '../history/ClaudeHistoryStore';
 import { createStopSubagentHook, type SubagentHookState } from '../hooks/SubagentHooks';
 import { toClaudeRuntimeModelId } from '../modelSelection';
 import { encodeClaudeTurn } from '../prompt/ClaudeTurnEncoder';
@@ -414,14 +414,16 @@ export class ClaudianService implements ChatRuntime {
     const sessionId = this.getSessionId();
     const vaultPath = getVaultPath(this.plugin.app);
     if (!sessionId || !vaultPath) return [];
-    return loadSubagentToolCalls(vaultPath, sessionId, agentId);
+    const sessionDir = resolveWorkingDirectory(vaultPath, this.currentWorkingFolder);
+    return loadSubagentToolCalls(sessionDir, sessionId, agentId);
   }
 
   async loadSubagentFinalResult(agentId: string): Promise<string | null> {
     const sessionId = this.getSessionId();
     const vaultPath = getVaultPath(this.plugin.app);
     if (!sessionId || !vaultPath) return null;
-    return loadSubagentFinalResult(vaultPath, sessionId, agentId);
+    const sessionDir = resolveWorkingDirectory(vaultPath, this.currentWorkingFolder);
+    return loadSubagentFinalResult(sessionDir, sessionId, agentId);
   }
 
   async reloadMcpServers(): Promise<void> {
@@ -709,10 +711,18 @@ export class ClaudianService implements ChatRuntime {
     const baseContext = this.buildQueryOptionsContext(vaultPath, cliPath);
     const hooks = this.buildHooks();
 
+    // Only resume a session that actually exists under the current working
+    // directory. The SDK keys session storage by cwd, so a session created in a
+    // different working folder (e.g. before the folder was changed) is not
+    // resumable here — attempting it throws "No conversation found with session
+    // ID". When the session is missing, start fresh instead of crashing.
+    const canResume = !!resumeSessionId
+      && sdkSessionExists(baseContext.workingDirectory, resumeSessionId);
+
     const ctx: PersistentQueryContext = {
       ...baseContext,
       abortController: this.queryAbortController ?? undefined,
-      resume: resumeSessionId
+      resume: canResume
         ? { sessionId: resumeSessionId, sessionAt: resumeAtMessageId, fork: this.pendingForkSession || undefined }
         : undefined,
       canUseTool: this.createApprovalCallback(),
