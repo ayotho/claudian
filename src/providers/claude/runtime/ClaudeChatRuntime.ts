@@ -347,6 +347,17 @@ export class ClaudianService implements ChatRuntime {
     this.closePersistentQuery('working folder change');
   }
 
+  /**
+   * Public entry point for setting the working folder without a bound
+   * conversation (blank/warmed tab). Ensures the cwd used by the next query
+   * (via buildQueryOptionsContext) reflects the toolbar selection even before
+   * the first message creates a conversation. Delegates to applyWorkingFolder
+   * (no-op if unchanged; closes the persistent query on change to restart cwd).
+   */
+  setWorkingFolder(workingFolder: string | undefined): void {
+    this.applyWorkingFolder(workingFolder);
+  }
+
   buildSessionUpdates({ conversation, sessionInvalidated }: {
     conversation: Conversation | null;
     sessionInvalidated: boolean;

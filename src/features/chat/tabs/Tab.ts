@@ -640,6 +640,16 @@ export async function initializeTabService(
         : (plugin.settings.persistentExternalContextPaths || []);
 
       runtime.syncConversationState(conversation, externalContextPaths);
+    } else {
+      // Blank tab, first send: no conversation exists yet, so syncConversationState
+      // is never called and the runtime's working folder would default to vault
+      // root. Apply the folder the user chose in the toolbar now, so the very
+      // first turn runs in the right cwd. The choice is also persisted onto the
+      // conversation when it is first saved (so it survives reload).
+      const chosenWorkingFolder = tab.ui.workingFolderSelector?.getWorkingFolder() ?? undefined;
+      if (chosenWorkingFolder) {
+        runtime.setWorkingFolder?.(chosenWorkingFolder);
+      }
     }
 
     // Re-check after async operations — tab may have been closed during init
@@ -1002,15 +1012,12 @@ function initializeInputToolbar(
         return;
       }
 
-      // Blank tab (no conversation yet): push the folder to an already-warmed
-      // runtime so the very first turn uses the right cwd. The value is also
-      // written onto the conversation when it is first saved.
-      if (tab.service) {
-        tab.service.syncConversationState(
-          { sessionId: null, workingFolder: workingFolder ?? undefined },
-          plugin.settings.persistentExternalContextPaths || [],
-        );
-      }
+      // Blank tab (no conversation yet): push the folder straight onto an
+      // already-warmed runtime so the very first turn uses the right cwd. The
+      // value is also written onto the conversation when it is first saved (so
+      // it survives reload), and re-applied in initializeTabService for the
+      // common case where the runtime does not exist yet at pick time.
+      tab.service?.setWorkingFolder?.(workingFolder ?? undefined);
     })();
   });
 

@@ -880,7 +880,7 @@ export class ExternalContextSelector {
 }
 
 /** Sentinel option used to clear the working folder back to the vault root. */
-const WORKING_FOLDER_ROOT = ' __vault_root__';
+const WORKING_FOLDER_ROOT = '__vault_root__';
 
 /** Fuzzy folder picker over all vault folders, plus a "vault root" reset entry. */
 class FolderSuggestModal extends FuzzySuggestModal<string> {

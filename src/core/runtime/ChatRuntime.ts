@@ -28,6 +28,13 @@ export interface ChatRuntime {
     conversation: ChatRuntimeConversationState | null,
     externalContextPaths?: string[],
   ): void;
+  /**
+   * Applies a vault-relative working folder to the runtime immediately, without
+   * requiring a bound conversation. Used so a blank/warmed tab's first turn uses
+   * the folder chosen in the toolbar before any conversation exists. Optional —
+   * providers that don't scope cwd per conversation may omit it.
+   */
+  setWorkingFolder?(workingFolder: string | undefined): void;
   reloadMcpServers(): Promise<void>;
   ensureReady(options?: ChatRuntimeEnsureReadyOptions): Promise<boolean>;
   query(

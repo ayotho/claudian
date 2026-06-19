@@ -2,6 +2,7 @@ import '@/providers';
 
 import * as sdkModule from '@anthropic-ai/claude-agent-sdk';
 import { Notice } from 'obsidian';
+import * as nodePath from 'path';
 
 import type { McpServerManager } from '@/core/mcp/McpServerManager';
 import type ClaudianPlugin from '@/main';
@@ -200,6 +201,41 @@ describe('ClaudianService', () => {
 
       expect(ensureReadySpy).not.toHaveBeenCalled();
       expect(service.getSessionId()).toBe('test-session');
+    });
+  });
+
+  describe('Working folder (blank tab, no bound conversation)', () => {
+    const vaultPath = '/mock/vault/path';
+    const cliPath = '/usr/local/bin/claude';
+
+    function buildContext() {
+      return (service as any).buildQueryOptionsContext(vaultPath, cliPath);
+    }
+
+    it('defaults the query cwd to vault root before any folder is chosen', () => {
+      // No conversation bound, no folder chosen yet.
+      expect(buildContext().workingDirectory).toBe(vaultPath);
+    });
+
+    it('routes the first-turn cwd into the chosen subfolder after setWorkingFolder, with NO bound conversation', () => {
+      // This is the blank-tab bug: pick a folder, then send the first message
+      // before any conversation exists. The cwd used to build the query must
+      // already reflect the choice — not stay at vault root.
+      service.setWorkingFolder('SomeFolder');
+
+      expect(buildContext().workingDirectory).toBe(
+        nodePath.join(vaultPath, 'SomeFolder'),
+      );
+      // Sanity: it is NOT the vault root.
+      expect(buildContext().workingDirectory).not.toBe(vaultPath);
+    });
+
+    it('clears back to vault root when the folder is reset to undefined', () => {
+      service.setWorkingFolder('SomeFolder');
+      expect(buildContext().workingDirectory).toBe(nodePath.join(vaultPath, 'SomeFolder'));
+
+      service.setWorkingFolder(undefined);
+      expect(buildContext().workingDirectory).toBe(vaultPath);
     });
   });
 
